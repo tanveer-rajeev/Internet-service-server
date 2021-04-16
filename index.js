@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const fileUpload = require('express-fileupload');
 const MongoClient = require('mongodb').MongoClient;
+const ObjectID = require('mongodb').ObjectID;
 require('dotenv').config()
 
 const uri = "mongodb+srv://tanveer:tanveer123@cluster0.qsr7x.mongodb.net/doctors-portal?retryWrites=true&w=majority";
@@ -20,11 +21,13 @@ app.get('/', (req, res) => {
     console.log('database is working');
 })
 
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+const client = new MongoClient(uri, {useNewUrlParser: true, useUnifiedTopology: true});
 client.connect(err => {
     const appointmentCollection = client.db("doctors-portal").collection("appointments");
     const doctorCollection = client.db("doctors-portal").collection("doctors");
     const reviewCollection = client.db("doctors-portal").collection("reviews");
+    const serviceCollection = client.db("doctors-portal").collection("service");
+
     console.log('database connected')
 
     app.post('/addAppointment', (req, res) => {
@@ -45,9 +48,9 @@ client.connect(err => {
     app.post('/appointmentsByDate', (req, res) => {
         const date = req.body;
         const email = req.body.email;
-        doctorCollection.find({ email: email })
+        doctorCollection.find({email: email})
             .toArray((err, doctors) => {
-                const filter = { date: date.date }
+                const filter = {date: date.date}
                 if (doctors.length === 0) {
                     filter.email = email;
                 }
@@ -72,18 +75,45 @@ client.connect(err => {
             img: Buffer.from(encImg, 'base64')
         };
 
-        doctorCollection.insertOne({ name, email, image })
+        doctorCollection.insertOne({name, email, image})
             .then(result => {
                 res.send(result.insertedCount > 0);
             })
     })
+    app.post('/addService', (req, res) => {
+
+        const bandwidth = req.body.bandwidth;
+        const service_hour = req.body.service_hour;
+        const ip_service = req.body.ip_service;
+        const monthly_charge = req.body.monthly_charge;
+
+        serviceCollection.insertOne({bandwidth, service_hour, ip_service, monthly_charge})
+            .then(result => {
+                res.send(result.insertedCount > 0);
+            })
+    })
+    app.get('/getServices', (req, res) => {
+
+        serviceCollection.find({})
+            .toArray((err, document) => {
+                res.send(document);
+            })
+    })
+
+    app.delete('/deleteService/:id', (req, res) => {
+        serviceCollection.deleteOne({_id: ObjectID(req.params.id)})
+            .then(result => {
+                res.send(result.deletedCount > 0);
+            })
+    })
+
     app.post('/addReview', (req, res) => {
 
         const name = req.body.name;
         const email = req.body.email;
         const review = req.body.review;
 
-        reviewCollection.insertOne({ name, email, review })
+        reviewCollection.insertOne({name, email, review})
             .then(result => {
                 res.send(result.insertedCount > 0);
             })
@@ -102,7 +132,7 @@ client.connect(err => {
     });
     app.post('/isAdmin', (req, res) => {
         const email = req.body.email;
-        doctorCollection.find({ email: email })
+        doctorCollection.find({email: email})
             .toArray((err, doctors) => {
                 res.send(doctors.length > 0);
             })
